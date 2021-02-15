@@ -1,34 +1,33 @@
 package fr.univtln.bruno.samples.jpa.todolist.entities;
 
 import com.fasterxml.jackson.annotation.*;
-import fr.univtln.bruno.samples.jpa.todolist.entities.listeners.MyEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.java.Log;
 
 import java.io.Serializable;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Log
-@Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED) //needed by JPA
+@ToString
+@EqualsAndHashCode(of = "uuid")
+@Getter
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class,
         property = "uuid")
 
 @NamedQueries({
-        @NamedQuery(name="user.findAll", query = "select user from User user"),
-        @NamedQuery(name="user.findbyUUID", query = "select user from User user where user.uuid = :uuid")
+        @NamedQuery(name = "user.findAll", query = "select user from User user"),
+        @NamedQuery(name = "user.findbyUUID", query = "select user from User user where user.uuid = :uuid")
 })
 
 @Entity
-@EntityListeners(MyEntityListener.class)
 @Table(name = "USER")
 public class User implements Serializable {
     @Id
@@ -39,7 +38,7 @@ public class User implements Serializable {
     @JsonIgnore
     long id;
 
-    @Column(name = "UUID", unique = true)
+    @Column(name = "UUID", unique = true, updatable = false, nullable = false)
     UUID uuid;
 
     @Column(name = "FIRSTNAME", nullable = false)
@@ -48,17 +47,30 @@ public class User implements Serializable {
     @Column(name = "LASTNAME", nullable = false)
     String lastname;
 
+    @ToString.Exclude
     @JsonIdentityReference(alwaysAsId = true)
-    @OneToMany(mappedBy = "owner", cascade = {CascadeType.REFRESH})
+    @OneToMany(mappedBy = "owner", cascade = {CascadeType.ALL})
     @OrderBy("dueDate DESC")
-    List<Task> ownedTaskList;
+    Set<Task> ownedTasks;
 
+    @ToString.Exclude
     @JsonIdentityReference(alwaysAsId = true)
-    @ManyToMany(mappedBy = "collaborators", cascade = {CascadeType.REFRESH})
-    List<Task> asCollaboratorTaskList;
+    @ManyToMany(mappedBy = "collaborators", cascade = {CascadeType.ALL})
+    Set<Task> asCollaboratorTasks;
 
-    public static User.UserBuilder builder(String firstname, String lastname) {
-        return new UserBuilder().uuid(UUID.randomUUID()).firstname(firstname).lastname(lastname);
+    @Builder(builderMethodName = "newInstance")
+    private User(String firstname, String lastname, @Singular Set<Task> ownedTasks, @Singular Set<Task> asCollaboratorTasks) {
+        this.uuid = UUID.randomUUID();
+        this.firstname = firstname;
+        this.lastname = lastname;
+        this.ownedTasks = new HashSet<>(ownedTasks);
+        ownedTasks.forEach(task -> task.setOwner(this));
+        this.asCollaboratorTasks = new HashSet<>(asCollaboratorTasks);
+        asCollaboratorTasks.forEach(task -> task.getCollaborators().add(this));
+    }
+
+    public static User.UserBuilder newInstance(String firstname, String lastname) {
+        return new UserBuilder().firstname(firstname).lastname(lastname);
     }
 
 }

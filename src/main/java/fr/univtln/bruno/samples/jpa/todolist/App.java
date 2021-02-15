@@ -21,7 +21,6 @@ import lombok.extern.java.Log;
 
 import java.io.IOException;
 import java.time.LocalDate;
-import java.util.Arrays;
 
 @Log
 public class App {
@@ -29,7 +28,6 @@ public class App {
 
     public static void main(String[] args) {
         log.info("TodoList JPA started");
-
 
         EntityManager entityManager = EMF.createEntityManager();
         EntityTransaction transaction = entityManager.getTransaction();
@@ -65,29 +63,31 @@ public class App {
         entityManager.persist(SimpleUserAuto.builder().firstname("John").lastname("Doe").build());
         entityManager.persist(SimpleUserAuto.builder().firstname("Jane").lastname("Doe").build());
 
-        User user1 = User.builder("Paul", "Smith").build();
-        User user2 = User.builder("Jim", "Johnson").build();
-        User user3 = User.builder("Jack", "Brown").build();
-        User user4 = User.builder("Tim", "Miller").build();
+        User user1 = User.newInstance("Paul", "Smith").build();
+        User user2 = User.newInstance("Jim", "Johnson").build();
+        User user3 = User.newInstance("Jack", "Brown").build();
+        User user4 = User.newInstance("Tim", "Miller").build();
 
+        Tabular tabularTodo = Tabular.newInstance("todo").build();
 
-        Tabular tabular1 = Tabular.builder()
-                .title("todo").build();
-
-        Task task1 = Task.builder(tabular1, user1, "task1.1")
+        Task task1 = Task.newInstance(tabularTodo, user1, "First")
                 .dueDate(LocalDate.now().plusDays(1))
                 .description("My first task")
-                .collaborators(Arrays.asList(new User[]{user2, user3}))
+                .collaborator(user2)
+                .collaborator(user3)
                 .build();
 
-        Task task2 = Task.builder(tabular1, user1, "task1.2")
-                .collaborators(Arrays.asList(new User[]{user2, user3}))
+        Task task2 = Task.newInstance(tabularTodo, user1, "Second")
+                .collaborator(user2)
+                .collaborator(user3)
                 .dueDate(LocalDate.now().plusDays(3))
                 .description("My second task")
                 .build();
 
-        Task task3 = Task.builder(tabular1, user4, "task4.1")
-                .collaborators(Arrays.asList(new User[]{user1, user2, user3}))
+        Task task3 = Task.newInstance(tabularTodo, user4, "task4.1")
+                .collaborator(user1)
+                .collaborator(user2)
+                .collaborator(user3)
                 .dueDate(LocalDate.now().plusDays(3))
                 .description("A task for U4")
                 .build();
@@ -99,12 +99,12 @@ public class App {
 
         entityManager.flush();
 
-        entityManager.refresh(tabular1);
+        entityManager.refresh(tabularTodo);
 
         transaction.commit();
 
         //entityManager.refresh(task1);
-        tabular1 = entityManager.find(Tabular.class, tabular1.getId());
+        tabularTodo = entityManager.find(Tabular.class, tabularTodo.getId());
 
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         mapper.findAndRegisterModules();
@@ -112,26 +112,28 @@ public class App {
         mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         try {
             // mapper.writeValue(System.out, new User[]{user1,user2,user3,user4});
-            mapper.writeValue(System.out, tabular1);
+            mapper.writeValue(System.out, tabularTodo);
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
 
-        //log.info(task1.toString());
-
         entityManager.close();
 
-        ToDoDAO toDoDAO = ToDoDAO.newInstance();
+        EntityManager entityManager1 = EMF.createEntityManager();
+        ToDoDAO toDoDAO = ToDoDAO.of(entityManager1);
 
-        log.info("Tabulars: "+toDoDAO.findAllTabulars().size());
-        log.info("Tasks: "+toDoDAO.findAllTasks().size());
-        log.info("Users: "+toDoDAO.findAllUsers().size());
-        log.info("User1 owned tasks: "+toDoDAO.findTaskOwnedByUser(user1).size());
-        log.info("User1 collaborator tasks: "+toDoDAO.findTaskCollaboratorByUser(user1).size());
+        log.info("Tabulars: "+toDoDAO.findAllTabular().size());
+        log.info("Tasks: "+toDoDAO.findAllTask().size());
+        log.info("Users: "+toDoDAO.findAllUser().size());
+        log.info("User1 owned tasks: "+toDoDAO.findTaskByOwner(user1).size());
+        log.info("User1 collaborator tasks: "+toDoDAO.findTaskByCollaborator(user1).size());
         log.info("User1 tasks: "+toDoDAO.findTaskByUser(user1).size());
         log.info("USER 1:"+user1);
         log.info("User1 by UUID:"+toDoDAO.findUserbyUUID(user1.getUuid()));
+        log.info("Task1 by UUID:"+toDoDAO.findTaskbyUUID(task1.getUuid()));
 
+        entityManager1.close();
+        EMF.close();
     }
 
 }

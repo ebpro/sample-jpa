@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
-import fr.univtln.bruno.samples.jpa.todolist.entities.listeners.MyEntityListener;
+import fr.univtln.bruno.samples.jpa.todolist.entities.listeners.TaskEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -16,19 +16,17 @@ import java.util.UUID;
 
 @Log
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED) //needed by JPA
 @ToString
-@EqualsAndHashCode
+@EqualsAndHashCode(of = "uuid")
 @Getter
-@Builder
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class,
         property = "uuid")
 
 @Entity
-@EntityListeners(MyEntityListener.class)
+@EntityListeners(TaskEntityListener.class)
 @NamedQueries({
         @NamedQuery(name = "tabular.findAll", query = "select tabular from Tabular tabular"),
         @NamedQuery(name = "tabular.findbyUUID", query = "select tabular from Tabular tabular where tabular.uuid = :uuid")
@@ -42,14 +40,25 @@ public class Tabular implements Serializable {
     long id;
 
     @Column(name = "UUID", unique = true)
-    @Builder.Default
     UUID uuid = UUID.randomUUID();
 
     @Column(name = "TITLE", nullable = false)
     String title;
 
+    @ToString.Exclude
     //@JsonIdentityReference(alwaysAsId = true)
     @OneToMany(mappedBy = "tabular", cascade = {CascadeType.PERSIST, CascadeType.REFRESH})
-    @Singular("Task")
-    List<Task> taskList;
+    List<Task> tasks;
+
+    @Builder(builderMethodName = "newInstance")
+    private Tabular(String title, @Singular List<Task> tasks) {
+        this.uuid = UUID.randomUUID();
+        this.title = title;
+        tasks.forEach(t -> t.setTabular(this));
+        this.tasks = tasks;
+    }
+
+    public static Tabular.TabularBuilder newInstance(String title) {
+        return new TabularBuilder().title(title);
+    }
 }

@@ -1,6 +1,7 @@
 package fr.univtln.bruno.samples.jpa.todolist.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import fr.univtln.bruno.samples.jpa.todolist.entities.listeners.TaskEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -16,6 +17,7 @@ import java.io.Serializable;
 @Getter
 
 @Entity
+@EntityListeners(TaskEntityListener.class)
 public class TaskContent implements Serializable {
     @JsonIgnore
     @Id

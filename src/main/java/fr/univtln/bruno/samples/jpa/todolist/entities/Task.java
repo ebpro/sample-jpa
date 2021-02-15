@@ -1,6 +1,7 @@
 package fr.univtln.bruno.samples.jpa.todolist.entities;
 
 import com.fasterxml.jackson.annotation.*;
+import fr.univtln.bruno.samples.jpa.todolist.entities.listeners.TaskEntityListener;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -10,13 +11,11 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Log
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor(access = AccessLevel.PROTECTED) //needed by JPA
 @ToString
 @EqualsAndHashCode
 @Getter
@@ -26,6 +25,7 @@ import java.util.UUID;
         property = "uuid")
 
 @Entity
+@EntityListeners(TaskEntityListener.class)
 @NamedQueries({
         @NamedQuery(name="task.findAll", query = "select task from Task task"),
         @NamedQuery(name="task.findbyUUID", query = "select task from Task task where task.uuid = :uuid"),
@@ -35,67 +35,82 @@ import java.util.UUID;
         @NamedQuery(name="task.findbyUser", query = "select task from Task task where task.owner = :user or :user member of task.collaborators")
 })
 public class Task implements Serializable {
-
     @Id
-    @Column(updatable = false, nullable = false)
+    @Column(updatable = false, nullable = false, name ="TASK_ID")
     @JsonIgnore
     long id;
 
-    @Column(name = "UUID", unique = true)
+    @Column(updatable = false, nullable = false, name = "UUID", unique = true)
     UUID uuid;
 
-    @Column(name = "CREATION_TIME")
+    @Column(nullable = false, name = "CREATION_TIME")
     final LocalTime creationTime = LocalTime.now();
 
-    @Column(name = "UPDATE_TIME")
+    @Setter
+    @Column(nullable = false, name = "UPDATE_TIME")
     LocalDateTime updateTime = LocalDateTime.now();
 
+    @Setter
     @Column(name = "DUE_DATE")
     LocalDate dueDate;
 
+    @Setter
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, name = "STATE")
     State state = State.OPENED;
 
     @Setter
+    @Column(name="TITLE")
     String title;
 
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "TASKCONTENT_ID")
+    @OneToOne(orphanRemoval = true, fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "TASK_ID")
     //Could be use to map task Id to content ID
     // but Task Cntent MUST exist before Content.
     @MapsId
     TaskContent taskContent;
 
-    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.REFRESH})
+    @Setter
+    @ManyToOne(cascade = {CascadeType.ALL})
     @JoinColumn(name = "CREATOR_ID")
     @JsonIdentityReference(alwaysAsId = true)
     User owner;
 
     @Singular("User")
-    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.REFRESH, CascadeType.REMOVE})
+    @ManyToMany(cascade = {CascadeType.ALL})
     @JsonIdentityReference(alwaysAsId = true)
     @JoinTable(name = "TASK_COLLABORATOR",
             joinColumns = {@JoinColumn(name = "TASK_ID")},
             inverseJoinColumns = {@JoinColumn(name = "COLLABORATOR_ID")})
-    List<User> collaborators = new ArrayList<>();
+    Set<User> collaborators;
 
+    @Setter
     @JsonIdentityReference(alwaysAsId = true)
     @ManyToOne(cascade = CascadeType.PERSIST)
     @JoinColumn(name = "TABULAR_ID")
     Tabular tabular;
 
-    @Builder
-    private Task(Tabular tabular, User owner, String title, String description, LocalDate dueDate, List<User> collaborators) {
+    @Builder(builderMethodName = "newInstance")
+    private Task(Tabular tabular, User owner, String title, String description, LocalDate dueDate, @Singular Set<User> collaborators) {
         this.uuid = UUID.randomUUID();
         this.tabular = tabular;
         this.owner = owner;
+        owner.getOwnedTasks().add(this);
         this.title = title;
         this.dueDate = dueDate;
-        this.collaborators = collaborators;
+        this.collaborators = new HashSet<>(collaborators);
+        collaborators.forEach(user->user.getOwnedTasks().add(this));
         taskContent = TaskContent.builder().description(description).build();
     }
 
-    public static TaskBuilder builder(Tabular tabular, User owner, String title) {
+    @PreRemove
+    private void removeAllUsers() {
+        owner = null;
+        collaborators.clear();
+    }
+
+
+    public static TaskBuilder newInstance(Tabular tabular, User owner, String title) {
         return new TaskBuilder().tabular(tabular).owner(owner).title(title);
     }
 

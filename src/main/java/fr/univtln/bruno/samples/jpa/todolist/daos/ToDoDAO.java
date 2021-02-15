@@ -1,62 +1,120 @@
 package fr.univtln.bruno.samples.jpa.todolist.daos;
 
-import fr.univtln.bruno.samples.jpa.todolist.App;
 import fr.univtln.bruno.samples.jpa.todolist.entities.Tabular;
 import fr.univtln.bruno.samples.jpa.todolist.entities.Task;
 import fr.univtln.bruno.samples.jpa.todolist.entities.User;
 import jakarta.persistence.EntityManager;
 import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.java.Log;
 
+import java.beans.PropertyChangeSupport;
 import java.util.List;
 import java.util.UUID;
 
 @Log
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@NoArgsConstructor(staticName = "newInstance")
 public class ToDoDAO {
-    EntityManager entityManager = App.EMF.createEntityManager();
+    final EntityManager entityManager;
 
-    public List<Tabular> findAllTabulars() {
-        return entityManager.createNamedQuery("tabular.findAll", Tabular.class).getResultList();
-    }
-    public Tabular findTabularByUUID(UUID uuid) {
-        return entityManager.createNamedQuery("tabular.findbyUUID", Tabular.class).setParameter("uuid",uuid).getSingleResult();
+    final TabularDAO tabularDAO;
+    final TaskDAO taskDAO;
+    final UserDAO userDAO;
+
+    private PropertyChangeSupport support;
+
+    private ToDoDAO(EntityManager entityManager) {
+        this.entityManager = entityManager;
+        this.tabularDAO = TabularDAO.of(entityManager);
+        this.taskDAO = TaskDAO.of(entityManager);
+        this.userDAO = UserDAO.of(entityManager);
     }
 
-    public List<Task> findAllTasks() {
-        return entityManager.createNamedQuery("task.findAll", Task.class).getResultList();
+    public static ToDoDAO of(EntityManager entityManager) {
+        return new ToDoDAO(entityManager);
     }
-    public Task findTaskbyUUID(UUID uuid) {
-        return entityManager.createNamedQuery("task.findbyUUID", Task.class).setParameter("uuid",uuid).getSingleResult();
+
+    public List<Task> findTaskByState(Task.State state) {
+        return taskDAO.findByState(state);
     }
-    public List<Task> findTaskByStatus(Task.State state) {
-        return entityManager.createNamedQuery("task.findbyState", Task.class).setParameter("state",state).getResultList();
-    }
+
     public List<Task> findOpenedTasks() {
-        return findTaskByStatus(Task.State.OPENED);
+        return findTaskByState(Task.State.OPENED);
     }
+
     public List<Task> findClosedTasks() {
-        return findTaskByStatus(Task.State.CLOSED);
+        return findTaskByState(Task.State.CLOSED);
     }
-    public List<Task> findTaskOwnedByUser(User user) {
-        return entityManager.createNamedQuery("task.findbyOwner", Task.class).setParameter("user",user).getResultList();
+
+    public List<Task> findTaskByOwner(User owner) {
+        return taskDAO.findByOwner(owner);
     }
-    public List<Task> findTaskCollaboratorByUser(User user) {
-        return entityManager.createNamedQuery("task.findbyCollaborator", Task.class).setParameter("user",user).getResultList();
+
+    public List<Task> findTaskByCollaborator(User collaborator) {
+        return taskDAO.findByCollaborator(collaborator);
     }
+
     public List<Task> findTaskByUser(User user) {
-        return entityManager.createNamedQuery("task.findbyUser", Task.class).setParameter("user",user).getResultList();
+        return taskDAO.findByUser(user);
     }
 
-
-    public List<User> findAllUsers() {
-        return entityManager.createNamedQuery("user.findAll", User.class).getResultList();
+    public List<Tabular> findAllTabular() {
+        return tabularDAO.findAll();
     }
+
+    public List<Task> findAllTask() {
+        return taskDAO.findAll();
+    }
+
+    public List<User> findAllUser() {
+        return userDAO.findAll();
+    }
+
+    public Tabular findTabularByUUID(UUID uuid) {
+        return tabularDAO.findByUUID(uuid);
+    }
+
+    public Task findTaskbyUUID(UUID uuid) {
+        return taskDAO.findByUUID(uuid);
+    }
+
     public User findUserbyUUID(UUID uuid) {
-        return entityManager.createNamedQuery("user.findbyUUID", User.class).setParameter("uuid",uuid).getSingleResult();
+        return entityManager.createNamedQuery("user.findbyUUID", User.class).setParameter("uuid", uuid).getSingleResult();
     }
 
+    public void addUser(User user) {
+        userDAO.persist(user);
+    }
+
+    public void addTask(Task task) {
+        taskDAO.persist(task);
+    }
+
+    public void addTabular(Tabular tabular) {
+        tabularDAO.persist(tabular);
+    }
+
+    public void removeTabular(Tabular tabular) {
+        tabularDAO.remove(tabular);
+    }
+
+    public void removeTask(Task task) {
+        taskDAO.remove(task);
+    }
+
+    public void removeUser(User user) {
+        userDAO.remove(user);
+    }
+
+    public void removeTabular(UUID tabular) {
+        tabularDAO.remove(tabular);
+    }
+
+    public void removeTask(UUID task) {
+        taskDAO.remove(task);
+    }
+
+    public void removeUser(UUID user) {
+        userDAO.remove(user);
+    }
 }
