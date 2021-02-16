@@ -36,6 +36,7 @@ import java.util.*;
 })
 public class Task implements Serializable {
     @Id
+    @GeneratedValue
     @Column(updatable = false, nullable = false, name ="TASK_ID")
     @JsonIgnore
     long id;
@@ -64,10 +65,10 @@ public class Task implements Serializable {
     String title;
 
     @OneToOne(orphanRemoval = true, fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "TASK_ID")
+    @JoinColumn(name = "TASK_CONTENT_ID")
     //Could be use to map task Id to content ID
     // but Task Cntent MUST exist before Content.
-    @MapsId
+    //@MapsId
     TaskContent taskContent;
 
     @Setter

@@ -24,7 +24,7 @@ import java.time.LocalDate;
 
 @Log
 public class App {
-    public final static EntityManagerFactory EMF = Persistence.createEntityManagerFactory("todo_pu");
+    public static final EntityManagerFactory EMF = Persistence.createEntityManagerFactory("todo_pu");
 
     public static void main(String[] args) {
         log.info("TodoList JPA started");
@@ -103,7 +103,6 @@ public class App {
 
         transaction.commit();
 
-        //entityManager.refresh(task1);
         tabularTodo = entityManager.find(Tabular.class, tabularTodo.getId());
 
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -111,8 +110,7 @@ public class App {
         mapper.registerModule(new JavaTimeModule());
         mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         try {
-            // mapper.writeValue(System.out, new User[]{user1,user2,user3,user4});
-            mapper.writeValue(System.out, tabularTodo);
+            log.info(mapper.writeValueAsString(tabularTodo));
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }

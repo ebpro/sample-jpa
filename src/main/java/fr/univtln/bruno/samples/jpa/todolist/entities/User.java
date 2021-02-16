@@ -32,7 +32,7 @@ import java.util.UUID;
 public class User implements Serializable {
     @Id
     @GeneratedValue
-    //@SequenceGenerator(name="user_seq", allocationSize=100)
+    //@SequenceGenerator(name="user_seq")
     //@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="user_seq")
     @Column(name = "USER_ID")
     @JsonIgnore

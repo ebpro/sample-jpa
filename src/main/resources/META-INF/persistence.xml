@@ -50,6 +50,11 @@
             <property name="jakarta.persistence.schema-generation.scripts.create-target" value="sampleCreate.ddl" />
             <property name="jakarta.persistence.schema-generation.scripts.drop-target" value="sampleDrop.ddl" />
 
+            <!-- Specific to eclipselink -->
+            <property name="eclipselink.target-database" value="org.eclipse.persistence.platform.database.H2Platform"/>
+            <property name="eclipselink.logging.level.sql" value="FINE"/>
+            <property name="eclipselink.logging.parameters" value="true"/>
+
             <!--property name="jakarta.persistence.sql-load-script-source" value="insert.sql"/-->
         </properties>
     </persistence-unit>
